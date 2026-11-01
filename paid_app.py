@@ -91,7 +91,7 @@ def route(price, desc, tags, inp, schema, required, example):
 S = lambda d: {"type": "string", "description": d}
 
 # Preise (je Agent verschieden, für die Zuordnung im Monitor)
-A20, A21, A22 = "$0.019", "$0.02", "$0.021"
+A20, A21, A22 = "$0.0385", "$0.0405", "$0.0425"
 routes = {
     "GET /v1/weather-alerts": route(
         A20, "Returns active US severe-weather alerts (National Weather Service) for a state or a lat/lon point: "
