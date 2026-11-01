@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: risk-events-api
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /health
+    autoDeploy: false
+    envVars:
+      - key: PAY_TO
+        value: "0x6BfFcc85172372aD4e9c1Ffafe97980A2C778FC7"   # Wallet des Bündels Referenz (geteilt, Zuordnung über Preis)
+      - key: X402_NETWORK
+        value: mainnet
+      - key: CDP_API_KEY_ID
+        fromService:
+          type: web
+          name: market-hours-api
+          envVarKey: CDP_API_KEY_ID
+      - key: CDP_API_KEY_SECRET
+        fromService:
+          type: web
+          name: market-hours-api
+          envVarKey: CDP_API_KEY_SECRET
