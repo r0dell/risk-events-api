@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import FastAPI, HTTPException, Query
 
 import engine as e
+import sanctions
 import sources as src
 
 app = FastAPI(
@@ -11,8 +12,17 @@ app = FastAPI(
     version="0.1.0",
     description=("Real-world risk events for agents: active US severe-weather alerts (NWS) by state or point, "
                  "worldwide earthquakes (USGS) by magnitude, time window and distance, and US product recalls "
-                 "(FDA food, drug, device enforcement reports). Public data, every response names its source."),
+                 "(FDA food, drug, device enforcement reports), plus sanctions screening against the OFAC, UN, EU "
+                 "and Swiss SECO lists. Public data, every response names its source."),
 )
+
+
+@app.on_event("startup")
+def _preload_sanctions():
+    import os
+    import threading
+    if os.environ.get("SANCTIONS_PRELOAD", "1") == "1":
+        threading.Thread(target=sanctions.preload, daemon=True).start()
 
 
 def _run(fn, *args, **kw):
@@ -53,12 +63,20 @@ def recalls(kind: str = Query("food", examples=["food"]), firm: Optional[str] = 
 
 
 # ---------------------------------------------------------------- frei
+@app.get("/v1/sanctions/check", summary="A29: Screen a person or company name against OFAC, UN, EU and SECO lists")
+def sanctions_check(name: str = Query(..., examples=["Vladimir Putin"]), min_score: int = Query(85, ge=50, le=100),
+                    type: Optional[str] = Query(None, description="individual, entity, vessel or aircraft"),
+                    lists: Optional[str] = Query(None, examples=["OFAC,EU"]), limit: int = Query(10, ge=1, le=50)):
+    return _run(sanctions.check, name, min_score, type, lists, limit)
+
+
 @app.get("/v1/sources", summary="Data source status (free)")
 def sources():
     return {"sources": {
         "nws": "https://api.weather.gov (U.S. National Weather Service)",
         "usgs": "https://earthquake.usgs.gov (U.S. Geological Survey)",
-        "openfda": "https://open.fda.gov (U.S. Food and Drug Administration)"}, "status": src.STATUS}
+        "openfda": "https://open.fda.gov (U.S. Food and Drug Administration)",
+        "sanctions": {k: v["name"] for k, v in sanctions.LISTS.items()}}, "status": src.STATUS}
 
 
 @app.get("/health", include_in_schema=False)

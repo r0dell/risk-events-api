@@ -92,6 +92,7 @@ S = lambda d: {"type": "string", "description": d}
 
 # Preise (je Agent verschieden, für die Zuordnung im Monitor)
 A20, A21, A22 = "$0.0385", "$0.0405", "$0.0425"
+A29 = "$0.0445"  # Sanktionslisten, neu 1.11.2026
 routes = {
     "GET /v1/weather-alerts": route(
         A20, "Returns active US severe-weather alerts (National Weather Service) for a state or a lat/lon point: "
@@ -124,6 +125,19 @@ routes = {
          "ongoing_only": S("true = only ongoing recalls"), "limit": S("Max results (1-100)")},
         [], {"kind": "food", "total_matches": 3, "recalls": [{"classification": "Class I", "status": "Ongoing",
              "firm": "Example Foods LLC", "reason": "Undeclared peanut", "reported": "2026-10-07"}]}),
+    "GET /v1/sanctions/check": route(
+        A29, "Screens a person, company, vessel or aircraft name against the official sanctions lists of the US "
+             "(OFAC SDN), the UN Security Council, the EU (consolidated financial sanctions) and Switzerland (SECO) "
+             "with fuzzy matching on names and aliases (accents, word order, transliterations). Returns score, list, "
+             "list ID, type and sanctions programme for every hit. For KYC/KYB, payments, procurement and "
+             "compliance agents. Screening hint only, not legal advice.",
+        ["compliance", "sanctions", "kyc", "aml", "ofac", "screening"], {"name": "Vladimir Putin"},
+        {"name": S("Person or company name"), "min_score": S("Similarity threshold 50-100, default 85"),
+         "type": S("Optional: individual, entity, vessel, aircraft"),
+         "lists": S("Optional comma list: OFAC, UN, EU, SECO (default all)"), "limit": S("Max results, default 10")},
+        ["name"], {"query": "Vladimir Putin", "status": "potential_match", "matches": 3,
+                   "results": [{"score": 100.0, "matched_name": "Vladimir Putin", "list": "SECO", "type": "individual",
+                                "programs": ["Ukraine"]}]}),
 }
 
 app.add_middleware(PaymentMiddlewareASGI, routes=routes, server=server)
